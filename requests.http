@@ -1,0 +1,39 @@
+GET http://localhost:5000/account/summary HTTP/1.1
+
+###
+
+GET http://localhost:5000/orders?status=open HTTP/1.1
+
+###
+
+GET http://localhost:5000/orders?status=closed HTTP/1.1
+
+###
+
+GET http://localhost:5000/orders?status=all HTTP/1.1
+
+###
+
+GET http://localhost:5000/orders/cancel HTTP/1.1
+
+###
+
+POST http://localhost:5000/orders/create HTTP/1.1
+content-type: application/json
+
+{
+    "symbol": "AAPL",
+    "qty": 1,
+    "side": "buy"
+}
+
+###
+
+POST http://localhost:5000/orders/create HTTP/1.1
+content-type: application/json
+
+{
+    "symbol": "AAPL",
+    "qty": 1,
+    "side": "sell"
+}

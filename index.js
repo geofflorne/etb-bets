@@ -1,50 +1,38 @@
-const Alpaca = require("@alpacahq/alpaca-trade-api");
-const USE_POLYGON = false; // by default we use the Alpaca data stream but you can change that
+const express = require("express");
+const TradingService = require("./trading-service");
+const tradingService = new TradingService();
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-const alpaca = new Alpaca({ usePolygon: USE_POLYGON });
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ACCOUNT API
-
-alpaca.getAccount().then((account) => {
-  console.log("Current Account:", account);
+app.get("/account/summary", (req, res) => {
+  tradingService.getAccount().then((account) => res.json(account));
 });
 
-alpaca.getAccountConfigurations().then((accountCfgs) => {
-  console.log("Current Account Configurations:", accountCfgs);
+app.get("/orders", (req, res) => {
+  tradingService.getOrders(req.query.status).then((orders) => res.json(orders));
 });
 
-// ORDERS API
+app.get("/orders/cancel", (req, res) => {
+  tradingService.cancelAllOrders().then(
+    () => res.json({ success: true }),
+    () => res.json({ success: false })
+  );
+});
 
-alpaca
-  .createOrder({
-    symbol: "AAPL", // any valid ticker symbol
-    qty: 1,
-    //notional, // qty or notional required, not both
-    side: "buy", //'buy' | 'sell',
-    type: "market", //market' | 'limit' | 'stop' | 'stop_limit' | 'trailing_stop',
-    time_in_force: "day", //'day' | 'gtc' | 'opg' | 'ioc',
-    // limit_price: number, // optional,
-    // stop_price: number, // optional,
-    // client_order_id: string, // optional,
-    // extended_hours: boolean, // optional,
-    // order_class: string, // optional,
-    // take_profit: object, // optional,
-    // stop_loss: object, // optional,
-    // trail_price: string, // optional,
-    // trail_percent: string // optional,
-  })
-  .then((order) => {
-    console.log("Order:", order);
-  });
+app.post("/orders/create", (req, res) => {
+  tradingService
+    .createOrder({
+      symbol: req.body.symbol,
+      qty: req.body.qty,
+      side: req.body.side,
+    })
+    .then(
+      (order) => res.json(order),
+      () => res.send("Failed to create order")
+    );
+});
 
-alpaca
-  .getOrders({
-    status: "all", //'open' | 'closed' | 'all',
-    // after: //Date,
-    // until: //Date,
-    // limit: //number,
-    // direction: //'asc' | 'desc'
-  })
-  .then((orders) => {
-    console.log("Orders:", orders);
-  });
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
