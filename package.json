@@ -1,0 +1,23 @@
+{
+  "name": "etb-bets",
+  "version": "1.0.0",
+  "description": "Slackbot for trading stocks",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/energytoolbase/etb-bets.git"
+  },
+  "author": "moonshot",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/energytoolbase/etb-bets/issues"
+  },
+  "homepage": "https://github.com/energytoolbase/etb-bets#readme",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "slackbots": "^1.2.0"
+  }
+}
