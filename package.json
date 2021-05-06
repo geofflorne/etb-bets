@@ -1,0 +1,22 @@
+{
+  "name": "etb-bets",
+  "version": "1.0.0",
+  "description": "We're going to the moon",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/energytoolbase/etb-bets.git"
+  },
+  "author": "Dylan Chance",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/energytoolbase/etb-bets/issues"
+  },
+  "homepage": "https://github.com/energytoolbase/etb-bets#readme",
+  "dependencies": {
+    "@alpacahq/alpaca-trade-api": "^2.0.0"
+  }
+}
