@@ -1,17 +1,20 @@
 require("dotenv").config();
 const { createEventAdapter } = require("@slack/events-api");
-const { startsWith } = require("lodash");
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
 const slackEvents = createEventAdapter(slackSigningSecret);
 const port = process.env.PORT || 3000;
+const TradingService = require("./trading.service");
+const tradingService = new TradingService();
 
 // Attach listeners to events by Slack Event "type". See: https://api.slack.com/events/message.im
 slackEvents.on("message", (event) => {
   console.log(event);
 
-  if (isCommand(event.text)) {
+  if (isOrder(event.text)) {
     console.log("this is a command");
-    console.log(parseCommand(event.text));
+    const order = parseOrder(event.text);
+    console.log(order);
+    tradingService.createOrder(order);
   } else {
     console.log("this is not a command");
   }
@@ -25,7 +28,7 @@ slackEvents.on("message", (event) => {
   console.log(`Listening for events on ${server.address().port}`);
 })();
 
-function isCommand(text) {
+function isOrder(text) {
   const normalizedText = text.toLowerCase();
 
   return (
@@ -33,9 +36,9 @@ function isCommand(text) {
   );
 }
 
-function parseCommand(text) {
+function parseOrder(text) {
   text = text.replace("$", "");
   const parts = text.split(" ");
 
-  return { side: parts[0], qty: parts[1], symbol: parts[2] };
+  return { side: parts[0], qty: parts[1], symbol: parts[2].toUpperCase() };
 }

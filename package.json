@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "@alpacahq/alpaca-trade-api": "^2.0.0",
     "@slack/events-api": "^3.0.0",
     "@slack/web-api": "^6.1.0",
     "abbrev": "^1.1.1",
