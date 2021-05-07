@@ -114,11 +114,11 @@ slackEvents.on("app_mention", async (event) => {
       tradingService.createOrder(getYoloOrder())
       .then((res) => {
         if (res) {
-          sendMessage(event.channel, `:rolling_on_the_floor_laughing: YOLO succeeded! Order placed: ${res.side} ${res.qty} ${res.symbol}`)
+          sendMessage(event.channel, `:rolling_on_the_floor_laughing: YOLO succeeded! You absolute legend, you've just bought ${res.qty} ${res.symbol}!`)
         }
       })
       .catch(err => {
-        sendMessage(event.channel, `:face_vomiting: YOLO failed. You have brought shame and dishonour upon yourself.`)
+        sendMessage(event.channel, `:face_vomiting: YOLO failed. You have brought only shame and dishonour upon yourself.`)
       });
     } else {
       await sendUnknownCommandMessage(event);
@@ -129,15 +129,13 @@ slackEvents.on("app_mention", async (event) => {
       tradingService.lastTrade(symbol).then((data) => {
 
         sendBlock(event.channel, getLastTradeBlock(data));
-
-        //sendMessage(event.channel, JSON.stringify(data));
       })
       .catch((err) => {
         if (err.response && err.response.data && err.response.data.detail) {
           sendMessage(event.channel, `Error: ${err.response.data.detail}`);
         }
         else {
-          sendMessage(event.channel, `An unknown error occurred.`);
+          sendMessage(event.channel, `Error: Could not find the last trade for that symbol.`);
         }
       });
     } else {
@@ -464,6 +462,14 @@ const helpBlocks = [
       type: "mrkdwn",
       text:
         "*5️⃣ Use the `$lastTrade` command*. `@ETB Trader $lastTrade <tickerSymbol>`",
+    },
+  },
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "*6️⃣ Use the `$news` command*. `@ETB Trader $news`",
     },
   },
   {
