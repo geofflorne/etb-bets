@@ -11,12 +11,22 @@ class TradingService {
     return this.alpaca.getAccount();
   }
 
+  // POSITIONS
+  getPositions() {
+    return this.alpaca.getPositions();
+  }
+
+  getPosition(ticker) {
+    return this.alpaca.getPosition(ticker);
+  }
+
   // ORDERS
   getOrders(status) {
     return this.alpaca.getOrders({ status });
   }
 
   createOrder({ symbol, qty, side }) {
+    
     return this.alpaca.createOrder({
       symbol,
       qty,
@@ -32,3 +42,5 @@ class TradingService {
 }
 
 module.exports = TradingService;
+
+    
