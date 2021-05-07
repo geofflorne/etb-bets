@@ -1,116 +1,118 @@
 require("dotenv").config();
 const { createEventAdapter } = require("@slack/events-api");
 const { WebClient, LogLevel } = require("@slack/web-api");
-const { get } = require("lodash");
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
 const slackEvents = createEventAdapter(slackSigningSecret);
-const client = new WebClient(process.env.SLACK_TOKEN, { logLevel: LogLevel.DEBUG });
+const client = new WebClient(process.env.SLACK_TOKEN, {
+  logLevel: LogLevel.DEBUG,
+});
 const port = process.env.PORT || 3000;
 const TradingService = require("./trading.service");
 const tradingService = new TradingService();
-const BOT_USER = 'U02175V34HJ';
+const BOT_USER = "U02175V34HJ";
 
 // Attach listeners to events by Slack Event "type". See: https://api.slack.com/events/message.im
 slackEvents.on("app_mention", async (event) => {
-  if(event.user === BOT_USER) return;
+  if (event.user === BOT_USER) return;
 
   if (event.text.indexOf("help") >= 0) {
-    sendBlock(event.channel, helpBlocks.blocks);
-  } else if (event.text.indexOf("$buy") >= 0 || event.text.indexOf("$sell") >= 0) {
+    sendBlock(event.channel, helpBlocks);
+  } else if (
+    event.text.indexOf("$buy") >= 0 ||
+    event.text.indexOf("$sell") >= 0
+  ) {
     try {
       const order = parseOrder(event.text);
-      tradingService.createOrder(order)
-      .then( res => {
-        if(res) {
-          console.log(res);
-          sendMessage(event.channel, `Order placed: ${res.side} ${res.qty} ${res.symbol}`)
-        } else {
-          // can this happen? how to handle?
-        }
-      })
-      .catch(err => {
-        console.log(err)
-        sendMessage(event.channel, `Error: ${err.error.message}`)
-      });
-    }
-    catch(err) {
+      tradingService
+        .createOrder(order)
+        .then((res) => {
+          if (res) {
+            console.log(res);
+            sendMessage(
+              event.channel,
+              `Order placed: ${res.side} ${res.qty} ${res.symbol}`
+            );
+          } else {
+            // can this happen? how to handle?
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          sendMessage(event.channel, `Error: ${err.error.message}`);
+        });
+    } catch (err) {
       await sendMessage(event.channel, "Could not parse your order.");
     }
-  }
-  else if (event.text.indexOf("$summary") >= 0) {
-    let summaryDescription;
-
+  } else if (event.text.indexOf("$summary") >= 0) {
     if (canParseSummary(event.text)) {
       let summaryBlocks;
 
-      tradingService.getAccount()
-      .then(res => {
-        if (res) {
-
-          summaryBlocks = summaryDataOrganized(res);
-          sendBlock(event.channel, summaryBlocks)
-         // summaryDescription = analyzeAccountData(res);
-        }
-      })
-      .then(() => {
-        tradingService.getOrders()
-        .then(res => {
+      tradingService
+        .getAccount()
+        .then((res) => {
           if (res) {
-            sendBlock(event.channel, analyzeOrdersData(res));
+            summaryBlocks = summaryDataOrganized(res);
+            sendBlock(event.channel, summaryBlocks);
+            // summaryDescription = analyzeAccountData(res);
           }
+        })
+        .then(() => {
+          tradingService.getOrders().then((res) => {
+            if (res) {
+              sendBlock(event.channel, analyzeOrdersData(res));
+            }
+          });
         });
-      })
       // then(() => {
       //   const positions = tradingService.getPositions()
       //   .then(res => {
       //     if (res) {
-            // sendMessage(event.channel, summaryDescription + analyzePositionsData(res))
-        //   }
-        // })
+      // sendMessage(event.channel, summaryDescription + analyzePositionsData(res))
+      //   }
+      // })
       // });
+    } else {
+      await sendMessage(
+        event.channel,
+        "Could not parse your summary request, try `@ETB Trader $summary`"
+      );
     }
-    else {
-      await sendMessage(event.channel, "Could not parse your summary request, try `@ETB Trader $summary`");
-    }
-  }
-  else if (event.text.indexOf("$positions") >= 0) {
-    const positionParts = event.text.split(" ")
-    console.log(positionParts)
-    if (positionParts.length === 2){
+  } else if (event.text.indexOf("$positions") >= 0) {
+    const positionParts = event.text.split(" ");
+    console.log(positionParts);
+    if (positionParts.length === 2) {
       //$positions
-      tradingService.getPositions()
-      .then(res => {
-        if(res){
-          const positions = getPositionsSummary(res);
-          sendBlock(event.channel, positions)
-        }
-      })
-      .catch(err => {
-        console.log(err)
-        sendMessage(event.channel, `Error: ${err.error.message}`)
-      });
-    }
-    else if (positionParts.length === 3){
+      tradingService
+        .getPositions()
+        .then((res) => {
+          if (res) {
+            const positions = getPositionsSummary(res);
+            sendBlock(event.channel, positions);
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          sendMessage(event.channel, `Error: ${err.error.message}`);
+        });
+    } else if (positionParts.length === 3) {
       //$positions <ticker>
-      tradingService.getPosition(positionParts[2])
-      .then(res => {
-        if(res){
-          const position = getPositionDetails(res)
-          sendBlock(event.channel, position)
-        }
-      })
-      .catch(err => {
-        console.log(err)
-        sendMessage(event.channel, `Error: ${err.error.message}`)
-      });
+      tradingService
+        .getPosition(positionParts[2])
+        .then((res) => {
+          if (res) {
+            const position = getPositionDetails(res);
+            sendBlock(event.channel, position);
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          sendMessage(event.channel, `Error: ${err.error.message}`);
+        });
+    } else {
+      sendMessage(event.channel, `Error: Could not parse message`);
     }
-    else{
-      sendMessage(event.channel, `Error: Could not parse message`)
-    }
-  }
-  else if (event.text.indexOf("$YOLO") >= 0) {
+  } else if (event.text.indexOf("$YOLO") >= 0) {
     if (canParseYolo(event.text)) {
-
       tradingService.createOrder(getYoloOrder())
       .then((res) => {
         if (res) {
@@ -120,19 +122,32 @@ slackEvents.on("app_mention", async (event) => {
       .catch(err => {
         sendMessage(event.channel, `:face_vomiting: YOLO failed. You have brought shame and dishonour upon yourself.`)
       });
+      tradingService.createOrder(getYoloOrder());
+    } else {
+      await sendUnknownCommandMessage(event);
     }
-    else {
-      await sendMessage(event.channel, "Unknown command. Use `@ETB Trader $help` for valid commands.");
+  } else if (event.text.indexOf("$lastTrade") >= 0) {
+    if (canParseLastTrade(event.text)) {
+      const symbol = event.text.split(" ")[2];
+      console.log(symbol);
+      tradingService.lastTrade(symbol).then((data) => {
+        sendMessage(event.channel, JSON.stringify(data));
+      });
+    } else {
+      await sendUnknownCommandMessage(event);
     }
-  }
-  else {
-    await sendMessage(event.channel, "Unknown command. Use `@ETB Trader $help` for valid commands.");
+  } else if (event.text.indexOf("$news") >= 0) {
+    tradingService.news().then((data) => {
+      sendMessage(event.channel, JSON.stringify(data));
+    });
+  } else {
+    await sendUnknownCommandMessage(event);
   }
 });
 
 (async () => {
   // Start the built-in server
-  console.log(slackSigningSecret)
+  console.log(slackSigningSecret);
   const server = await slackEvents.start(port);
 
   // Log a message when the server is ready
@@ -140,26 +155,30 @@ slackEvents.on("app_mention", async (event) => {
 })();
 
 function parseOrder(text) {
+  const parts = text.split(" ");
 
-    const parts = text.split(" ");
+  console.log("parts:");
+  console.log(parts);
 
-    console.log("parts:")
-    console.log(parts);
+  if (
+    parts.length !== 4 ||
+    (parts[1].toLowerCase() !== "$buy" && parts[1].toLowerCase() !== "$sell") ||
+    isNaN(parts[2])
+  ) {
+    throw new Error("Invalid order: " + text);
+  }
 
-    if (parts.length !== 4 || 
-      (parts[1].toLowerCase() !== "$buy" && parts[1].toLowerCase() !== "$sell") ||
-      isNaN(parts[2])) {
-      throw new Error('Invalid order: ' + text);
-    }
-
-    return { side: parts[1].toLowerCase().substr(1), qty: parts[2], symbol: parts[3].toUpperCase() };
+  return {
+    side: parts[1].toLowerCase().substr(1),
+    qty: parts[2],
+    symbol: parts[3].toUpperCase(),
+  };
 }
 
 async function sendMessage(channel, msg) {
-  
   const response = await client.chat.postMessage({
     channel: channel,
-    text: msg
+    text: msg,
   });
   //console.log(response);
 }
@@ -167,7 +186,7 @@ async function sendMessage(channel, msg) {
 async function sendBlock(channel, blocks) {
   const response = await client.chat.postMessage({
     channel: channel,
-    blocks
+    blocks,
   });
 }
 
@@ -177,41 +196,39 @@ function canParseSummary(text) {
 }
 
 function getTodaysProfitLoss(accData) {
-  const{ equity, last_equity } = accData;
+  const { equity, last_equity } = accData;
   const diff = Math.abs(equity - last_equity).toFixed(2);
-  const pDiff = (100 * diff / last_equity).toFixed(2);
+  const pDiff = ((100 * diff) / last_equity).toFixed(2);
 
   if (parseFloat(equity) >= parseFloat(last_equity)) {
     return `$${diff} | ${pDiff}%`;
-  }
-  else {
+  } else {
     return `-$${diff} | -${pDiff}%`;
   }
 }
 
 function analyzeOrdersData(orderData) {
-
   let ordersDescription = [
-		{
-			"type": "header",
-			"text": {
-				"type": "plain_text",
-				"text": "Open Orders",
-				"emoji": true
-			}
-		},
     {
-			"type": "section",
-			"fields": [],
-    "accessory": {
-      "type": "image",
-      "image_url": "https://i.imgur.com/xFPkFaV.jpg",
-      "alt_text": "dog money"
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "Open Orders",
+        emoji: true,
+      },
     },
-    }
-  ]
+    {
+      type: "section",
+      fields: [],
+      accessory: {
+        type: "image",
+        image_url: "https://i.imgur.com/xFPkFaV.jpg",
+        alt_text: "dog money",
+      },
+    },
+  ];
 
-  orderData.forEach(order => {
+  orderData.forEach((order) => {
     const orderCell = {
 				"type": "mrkdwn",
 				"text": `*${order.symbol}* ${order.side} ${order.qty}: ${order.status}`
@@ -242,7 +259,7 @@ function getPositionsSummary(positionsData) {
     ]
   }];
 
-  positionsData.forEach(position => {
+  positionsData.forEach((position) => {
     positionDescription.push({
 			"type": "section",
 			"text": {
@@ -269,175 +286,183 @@ function getPositionsSummary(positionsData) {
 }
 
 function getPositionDetails(positionData) {
-  const p = positionData
-  console.log(p)
-  return [{
-    "type": "header",
-    "text": {
-      "type": "plain_text",
-      "text": `${p.symbol} ${p.side} ${p.qty}`,
-      "emoji": true
-    }
-  },
-  {
-    "type": "section",
-    "fields": [
-      {
-        "type": "mrkdwn",
-        "text": `*Cost Basis*\n$${p.cost_basis}`
+  const p = positionData;
+  console.log(p);
+  return [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `${p.symbol} ${p.side} ${p.qty}`,
+        emoji: true,
       },
-      {
-        "type": "mrkdwn",
-        "text": `*Market Value*\n$${p.market_value}`
-      },
-      {
-        "type": "mrkdwn",
-        "text": `*Average Entry Price*\n$${p.avg_entry_price}`
-      },
-      {
-        "type": "mrkdwn",
-        "text": `*Current Share Price*\n$${p.current_price}`
-      },
-      {
-        "type": "mrkdwn",
-        "text": `*Today's Profit/Loss*\n$${p.unrealized_intraday_pl} | ${Number(p.unrealized_intraday_plpc).toFixed(5)}%`
-      },
-      {
-        "type": "mrkdwn",
-        "text": `*Total Profit/Loss*\n$${p.unrealized_pl} | ${Number(p.unrealized_plpc).toFixed(5)}%`
-      }
-    ]
-  }]
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Cost Basis*\n$${p.cost_basis}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Market Value*\n$${p.market_value}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Average Entry Price*\n$${p.avg_entry_price}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Current Share Price*\n$${p.current_price}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Today's Profit/Loss*\n$${p.unrealized_intraday_pl} | ${Number(
+            p.unrealized_intraday_plpc
+          ).toFixed(5)}%`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Total Profit/Loss*\n$${p.unrealized_pl} | ${Number(
+            p.unrealized_plpc
+          ).toFixed(5)}%`,
+        },
+      ],
+    },
+  ];
 }
 
 const summaryDataOrganized = (accData) => {
   return [
-		{
-			"type": "header",
-			"text": {
-				"type": "plain_text",
-				"text": "Account Summary",
-				"emoji": true
-			}
-		},
-		{
-			"type": "section",
-			"fields": [
-				{
-					"type": "mrkdwn",
-					"text": `*Account #:*\n${accData.account_number}`
-				}
-			]
-		},
     {
-			"type": "section",
-			"fields": [
-				{
-					"type": "mrkdwn",
-					"text": `*Status*\n${accData.status}`
-				},
-        {
-					"type": "mrkdwn",
-					"text": `*Currency*\n${accData.currency}`
-				}
-			]
-		},
-		{
-			"type": "section",
-			"fields": [
-				{
-					"type": "mrkdwn",
-					"text": `*Cash Balance*\n$${accData.cash}`
-				},
-        {
-					"type": "mrkdwn",
-					"text": `*Portfolio Value*\n$${accData.equity}`
-				}
-			]
-		},
-		{
-			"type": "section",
-			"fields": [
-				{
-					"type": "mrkdwn",
-					"text": `*Last Portfolio Value*\n$${accData.last_equity}`
-				},
-        {
-					"type": "mrkdwn",
-					"text": `*Today's Profit/Loss*\n${getTodaysProfitLoss(accData)}`
-				}
-			]
-		},
-    {
-			"type": "section",
-			"fields": [
-				{
-					"type": "mrkdwn",
-					"text": `*Buying Power*\n$${accData.buying_power}`
-				},
-        {
-					"type": "mrkdwn",
-					"text": `*Daytrade Count (Last 5 Trading Days)*\n${accData.daytrade_count}`
-				}
-			]
-		},
-    {
-			"type": "divider"
-		}
-	]
-}
-
-const helpBlocks = {
-	"blocks": [
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "Hey there 👋 I'm ETB Trader. I'm here to help you make trades and manage a portfolio in Slack.\nHere is a list of commands for reference:"
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "*1️⃣ Use the `$summary` command*. `@ETB Trader $summary`"
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "*2️⃣ Use the `$buy` command*. `@ETB Trader $buy <numShares> <tickerSymbol>`"
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "*3️⃣ Use the `$sell` command*. `@ETB Trader $sell <numShares> <tickerSymbol>`"
-			}
-		},
-    {
-      "type": "section",
-      "text": {
-        "type": "mrkdwn",
-        "text": "*4️⃣ Use the `$positions` command*. `@ETB Trader $positions` or `@ETB Trader $positions <tickerSymbol>`"
-      }
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "Account Summary",
+        emoji: true,
+      },
     },
-		{
-			"type": "divider"
-		},
-		{
-			"type": "context",
-			"elements": [
-				{
-					"type": "mrkdwn",
-					"text": "❓Get help at any time with *help* in a mention at me"
-				}
-			]
-		}
-	]
-}
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Account #:*\n${accData.account_number}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Status*\n${accData.status}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Currency*\n${accData.currency}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Cash Balance*\n$${accData.cash}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Portfolio Value*\n$${accData.equity}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Last Portfolio Value*\n$${accData.last_equity}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Today's Profit/Loss*\n${getTodaysProfitLoss(accData)}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Buying Power*\n$${accData.buying_power}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Daytrade Count (Last 5 Trading Days)*\n${accData.daytrade_count}`,
+        },
+      ],
+    },
+    {
+      type: "divider",
+    },
+  ];
+};
+
+const helpBlocks = [
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "Hey there 👋 I'm ETB Trader. I'm here to help you make trades and manage a portfolio in Slack.\nHere is a list of commands for reference:",
+    },
+  },
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: "*1️⃣ Use the `$summary` command*. `@ETB Trader $summary`",
+    },
+  },
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "*2️⃣ Use the `$buy` command*. `@ETB Trader $buy <numShares> <tickerSymbol>`",
+    },
+  },
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "*3️⃣ Use the `$sell` command*. `@ETB Trader $sell <numShares> <tickerSymbol>`",
+    },
+  },
+  {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "*4️⃣ Use the `$positions` command*. `@ETB Trader $positions` or `@ETB Trader $positions <tickerSymbol>`",
+    },
+  },
+  {
+    type: "divider",
+  },
+  {
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: "❓Get help at any time with *help* in a mention at me",
+      },
+    ],
+  },
+];
 
 function canParseYolo(text) {
   const parts = text.split(" ");
@@ -452,4 +477,16 @@ function getYoloOrder() {
     symbol += String.fromCharCode(Math.floor(Math.random() * 26 + 65));
   }
   return { side: "buy", qty: (Math.random()*420 + 1).toFixed(), symbol: symbol };
+}
+
+async function sendUnknownCommandMessage(event) {
+  await sendMessage(
+    event.channel,
+    "Unknown command. Use `@ETB Trader $help` for valid commands."
+  );
+}
+
+function canParseLastTrade(text) {
+  const parts = text.split(" ");
+  return parts.length === 3 && parts[1].toLowerCase() === "$lasttrade";
 }
