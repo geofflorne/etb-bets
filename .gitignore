@@ -103,5 +103,8 @@ dist
 # TernJS port file
 .tern-port
 
-#ngrok
+# ngrok
 ngrok
+
+#DS Store
+.DS_Store
