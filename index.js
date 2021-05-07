@@ -16,7 +16,13 @@ slackEvents.on("app_mention", async (event) => {
   if (event.user === BOT_USER) return;
 
   if (event.text.indexOf("help") >= 0) {
-    sendBlock(event.channel, helpBlocks);
+    try {
+      sendBlock(event.channel, helpBlocks);
+    }
+    catch(err) {
+      console.log(err);
+      sendMessage(event.channel, `Error: ${err.error.message}`);
+    }
   } else if (
     event.text.indexOf("$buy") >= 0 ||
     event.text.indexOf("$sell") >= 0
@@ -120,9 +126,19 @@ slackEvents.on("app_mention", async (event) => {
   } else if (event.text.indexOf("$lastTrade") >= 0) {
     if (canParseLastTrade(event.text)) {
       const symbol = event.text.split(" ")[2];
-      console.log(symbol);
       tradingService.lastTrade(symbol).then((data) => {
-        sendMessage(event.channel, JSON.stringify(data));
+
+        sendBlock(event.channel, getLastTradeBlock(data));
+
+        //sendMessage(event.channel, JSON.stringify(data));
+      })
+      .catch((err) => {
+        if (err.response && err.response.data && err.response.data.detail) {
+          sendMessage(event.channel, `Error: ${err.response.data.detail}`);
+        }
+        else {
+          sendMessage(event.channel, `An unknown error occurred.`);
+        }
       });
     } else {
       await sendUnknownCommandMessage(event);
@@ -443,6 +459,14 @@ const helpBlocks = [
     },
   },
   {
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text:
+        "*5️⃣ Use the `$lastTrade` command*. `@ETB Trader $lastTrade <tickerSymbol>`",
+    },
+  },
+  {
     type: "divider",
   },
   {
@@ -481,4 +505,76 @@ async function sendUnknownCommandMessage(event) {
 function canParseLastTrade(text) {
   const parts = text.split(" ");
   return parts.length === 3 && parts[1].toLowerCase() === "$lasttrade";
+}
+
+function getLastTradeBlock(lastTradeData) {
+
+  lastTradeBlocks = [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `Last Trade`,
+        emoji: true,
+      },
+    }];
+
+    lastTradeData.forEach(data => {
+      lastTradeBlocks.push(...[{
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Symbol*\n${data.ticker}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Last Price*\n$${data.last.toFixed(2)}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Bid Price*\n$${data.bidPrice.toFixed(2)}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Ask Price*\n$${data.askPrice.toFixed(2)}`,
+          }, 
+          {
+            type: "mrkdwn",
+            text: `*Opening Price*\n$${data.open.toFixed(2)}`,
+          },       
+          {
+            type: "mrkdwn",
+            text: `*Previous Close Price*\n$${data.prevClose.toFixed(2)}`,
+          }
+        ]
+      },
+      {
+        type: "section",
+        fields: [
+          {
+            type: "mrkdwn",
+            text: `*Last Size*\n${data.lastSize}`
+          },
+          {
+            type: "mrkdwn",
+            text: `*Bid Size*\n${data.bidSize}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Ask Size*\n${data.askSize}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Volume*\n${data.volume}`,
+          },
+          {
+            type: "mrkdwn",
+            text: `*Last Sale Time*\n${new Date(data.lastSaleTimestamp).toUTCString()}`,
+          }
+        ] 
+      }]);
+    })
+
+  return lastTradeBlocks;
 }
