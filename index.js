@@ -110,7 +110,16 @@ slackEvents.on("app_mention", async (event) => {
   }
   else if (event.text.indexOf("$YOLO") >= 0) {
     if (canParseYolo(event.text)) {
+
       tradingService.createOrder(getYoloOrder())
+      .then((res) => {
+        if (res) {
+          sendMessage(event.channel, `:rolling_on_the_floor_laughing: YOLO succeeded! Order placed: ${res.side} ${res.qty} ${res.symbol}`)
+        }
+      })
+      .catch(err => {
+        sendMessage(event.channel, `:face_vomiting: YOLO failed. You have brought shame and dishonour upon yourself.`)
+      });
     }
     else {
       await sendMessage(event.channel, "Unknown command. Use `@ETB Trader $help` for valid commands.");
@@ -167,18 +176,6 @@ function canParseSummary(text) {
   return parts.length == 2 && parts[1].toLowerCase() === "$summary";
 }
 
-function analyzeAccountData(accData) {
-  return `Account #: ${accData.account_number}
-  Status: ${accData.status}
-  Currency: ${accData.currency}
-  Cash Balance: $${accData.cash}
-  Portfolio Value (Equity): $${accData.equity}
-  Last Portfolio Value (Last Equity): $${accData.last_equity}
-  Today's Profit/Loss: ${getTodaysProfitLoss(accData)}
-  Buying Power: $${accData.buying_power}
-  Daytrade Count (Last 5 Trading Days): ${accData.daytrade_count}`;
-}
-
 function getTodaysProfitLoss(accData) {
   const{ equity, last_equity } = accData;
   const diff = Math.abs(equity - last_equity).toFixed(2);
@@ -217,7 +214,7 @@ function analyzeOrdersData(orderData) {
   orderData.forEach(order => {
     const orderCell = {
 				"type": "mrkdwn",
-				"text": `*${order.symbol}*\n${order.side} ${order.qty}`
+				"text": `*${order.symbol}* ${order.side} ${order.qty}: ${order.status}`
 		}
     
     ordersDescription[1]['fields'].push(orderCell)
@@ -234,6 +231,15 @@ function getPositionsSummary(positionsData) {
       "text": "Current Positions",
       "emoji": true
     }
+  },		
+  {
+    "type": "context",
+    "elements": [
+      {
+        "type": "mrkdwn",
+        "text": "Symbol | Side | Qty | Unrealized P/L%"
+      }
+    ]
   }];
 
   positionsData.forEach(position => {
@@ -241,18 +247,23 @@ function getPositionsSummary(positionsData) {
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `${position.symbol} ${position.side} ${position.qty}`
+				"text": `*${position.symbol}* ${position.side} ${position.qty} ${Number(position.unrealized_plpc).toFixed(3)}%`
 			}
 		});
   })
   
-  positionDescription.push({
-    "type": "section",
-    "text": {
-      "type": "mrkdwn",
-      "text": "@ETB Trader $positions <tickerSymbol> for more details"
+  positionDescription.push(
+    {
+			"type": "divider"
+		},
+    {
+      "type": "context",
+      "elements": [{
+        "type": "mrkdwn",
+        "text": "@ETB Trader $positions <tickerSymbol> for more details"
+      }]
     }
-  })
+  )
 
   return positionDescription;
 }
@@ -434,8 +445,11 @@ function canParseYolo(text) {
 }
 
 function getYoloOrder() {
-
   
-
-  return { side: "buy", qty: (Math.random()*420 + 1).toFixed(), symbol: "YOLO" };
+  let symbol = ""
+  let symbolLen = Math.floor(Math.random() * 4) + 1;
+  for (let c = 0; c < symbolLen; c++) {
+    symbol += String.fromCharCode(Math.floor(Math.random() * 26 + 65));
+  }
+  return { side: "buy", qty: (Math.random()*420 + 1).toFixed(), symbol: symbol };
 }
