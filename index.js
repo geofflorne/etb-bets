@@ -117,7 +117,7 @@ slackEvents.on("app_mention", async (event) => {
     } else {
       await sendUnknownCommandMessage(event);
     }
-  } else if (event.text.indexOf("$lastTrade")) {
+  } else if (event.text.indexOf("$lastTrade") >= 0) {
     if (canParseLastTrade(event.text)) {
       const symbol = event.text.split(" ")[2];
       console.log(symbol);
@@ -127,6 +127,10 @@ slackEvents.on("app_mention", async (event) => {
     } else {
       await sendUnknownCommandMessage(event);
     }
+  } else if (event.text.indexOf("$news") >= 0) {
+    tradingService.news().then((data) => {
+      sendMessage(event.channel, JSON.stringify(data));
+    });
   } else {
     await sendUnknownCommandMessage(event);
   }
