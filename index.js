@@ -63,14 +63,6 @@ slackEvents.on("app_mention", async (event) => {
             }
           });
         });
-      // then(() => {
-      //   const positions = tradingService.getPositions()
-      //   .then(res => {
-      //     if (res) {
-      // sendMessage(event.channel, summaryDescription + analyzePositionsData(res))
-      //   }
-      // })
-      // });
     } else {
       await sendMessage(
         event.channel,
@@ -122,7 +114,6 @@ slackEvents.on("app_mention", async (event) => {
       .catch(err => {
         sendMessage(event.channel, `:face_vomiting: YOLO failed. You have brought shame and dishonour upon yourself.`)
       });
-      tradingService.createOrder(getYoloOrder());
     } else {
       await sendUnknownCommandMessage(event);
     }
@@ -213,29 +204,30 @@ function analyzeOrdersData(orderData) {
       type: "header",
       text: {
         type: "plain_text",
-        text: "Open Orders",
+        text: `Open Orders (${orderData.length})`,
         emoji: true,
       },
-    },
-    {
+    }
+  ];
+
+  if(orderData.length > 0) {
+    const fields = orderData.map(order => {
+      return {
+        "type": "mrkdwn",
+        "text": `*${order.symbol}* ${order.side} ${order.qty}: ${order.status}`
+      }
+    })
+
+    ordersDescription.push({
       type: "section",
-      fields: [],
+      fields: fields,
       accessory: {
         type: "image",
         image_url: "https://i.imgur.com/xFPkFaV.jpg",
         alt_text: "dog money",
-      },
-    },
-  ];
-
-  orderData.forEach((order) => {
-    const orderCell = {
-				"type": "mrkdwn",
-				"text": `*${order.symbol}* ${order.side} ${order.qty}: ${order.status}`
-		}
-    
-    ordersDescription[1]['fields'].push(orderCell)
-  })
+      }
+    })
+  }
 
   return ordersDescription;
 }
@@ -264,7 +256,7 @@ function getPositionsSummary(positionsData) {
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `*${position.symbol}* ${position.side} ${position.qty} ${Number(position.unrealized_plpc).toFixed(3)}%`
+				"text": `*${position.symbol}* ${position.side} ${position.qty} ${Number(position.unrealized_plpc * 100).toFixed(3)}%`
 			}
 		});
   })
@@ -319,13 +311,13 @@ function getPositionDetails(positionData) {
         {
           type: "mrkdwn",
           text: `*Today's Profit/Loss*\n$${p.unrealized_intraday_pl} | ${Number(
-            p.unrealized_intraday_plpc
+            p.unrealized_intraday_plpc * 100
           ).toFixed(5)}%`,
         },
         {
           type: "mrkdwn",
           text: `*Total Profit/Loss*\n$${p.unrealized_pl} | ${Number(
-            p.unrealized_plpc
+            p.unrealized_plpc * 100
           ).toFixed(5)}%`,
         },
       ],
